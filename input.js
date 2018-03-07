@@ -11,6 +11,8 @@ print(h);
 
 h.num = 11;
 print(h.num);
+h.str = "hoge";
+print(h.str);
 
 h = null;
 

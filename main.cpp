@@ -1,11 +1,12 @@
 #include <cstdio>
+#include <string>
 
 #include "libplatform/libplatform.h"
 #include "v8.h"
 
 class Hoge {
 public:
-    Hoge() { printf("Hoge constructor.\n"); }
+    Hoge() : num(0), str() { printf("Hoge constructor.\n"); }
     ~Hoge() { printf("Hoge destructor.\n"); }
 
     static void New(v8::FunctionCallbackInfo<v8::Value> const& info) {
@@ -41,8 +42,29 @@ public:
         printf("Hoge::SetNum.\n");
     }
 
+    static void GetStr(v8::Local<v8::String> property, v8::PropertyCallbackInfo<v8::Value> const& info) {
+        v8::Local<v8::Object> self = info.Holder();
+        v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(self->GetInternalField(0));
+        void* p = wrap->Value();
+        auto& str = static_cast<Hoge*>(p)->str;
+        v8::Local<v8::String> value = v8::String::NewFromUtf8(info.GetIsolate(), str.c_str(),
+            v8::NewStringType::kNormal, str.length()).ToLocalChecked();
+        info.GetReturnValue().Set(value);
+        printf("Hoge::GetStr.\n");
+    }
+
+    static void SetStr(v8::Local<v8::String> property, v8::Local<v8::Value> value,
+        v8::PropertyCallbackInfo<void> const& info) {
+        v8::Local<v8::Object> self = info.Holder();
+        v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(self->GetInternalField(0));
+        void* p = wrap->Value();
+        static_cast<Hoge*>(p)->str = *v8::String::Utf8Value(info.GetIsolate(), value);
+        printf("Hoge::SetStr.\n");
+    }
+
 public:
     int num;
+    std::string str;
 };
 
 std::string read_file(char const* path) {
@@ -89,6 +111,8 @@ v8::Local<v8::Context> create_context(v8::Isolate* isolate) {
     hoge_template->InstanceTemplate()->SetInternalFieldCount(1);
     hoge_template->InstanceTemplate()->SetAccessor(v8::String::NewFromUtf8(isolate, "num"),
         Hoge::GetNum, Hoge::SetNum);
+    hoge_template->InstanceTemplate()->SetAccessor(v8::String::NewFromUtf8(isolate, "str"),
+        Hoge::GetStr, Hoge::SetStr);
     global->Set(v8::String::NewFromUtf8(isolate, "Hoge", v8::NewStringType::kNormal).ToLocalChecked(),
         hoge_template);
 
