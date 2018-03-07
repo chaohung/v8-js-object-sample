@@ -1,16 +1,30 @@
 #include <cstdio>
 #include <string>
+#include <vector>
 
 #include "libplatform/libplatform.h"
 #include "v8.h"
 
 class Hoge {
 public:
-    Hoge() : num(0), str() { printf("Hoge constructor.\n"); }
+    Hoge() : num(0), str(), buf() { printf("Hoge constructor.\n"); }
     ~Hoge() { printf("Hoge destructor.\n"); }
+
+    void dump() {
+        printf("\033[31m");
+        printf("hoge address: %p\n", this);
+        printf("num: %d\n", num);
+        printf("str: %s\n", str.c_str());
+        printf("buf: ");
+        for (int i = 0; i < buf.size(); i++) {
+            printf("%d,", buf[i]);
+        } printf("\n");
+        printf("\033[00m");
+    }
 
     static void New(v8::FunctionCallbackInfo<v8::Value> const& info) {
         Hoge* h = new Hoge();
+        h->buf.resize(5);
         info.This()->SetInternalField(0, v8::External::New(info.GetIsolate(), h));
         info.GetReturnValue().Set(info.This());
 
@@ -62,9 +76,29 @@ public:
         printf("Hoge::SetStr.\n");
     }
 
+    static void GetBuf(v8::Local<v8::String> property, v8::PropertyCallbackInfo<v8::Value> const& info) {
+        v8::Local<v8::Object> self = info.Holder();
+        v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(self->GetInternalField(0));
+        void* p = wrap->Value();
+        Hoge* h = static_cast<Hoge*>(p);
+        v8::Local<v8::ArrayBuffer> array_buf = v8::ArrayBuffer::New(info.GetIsolate(),
+            h->buf.data(), h->buf.size());
+        v8::Local<v8::Uint8Array> value = v8::Uint8Array::New(array_buf, 0, h->buf.size());
+        info.GetReturnValue().Set(value);
+        printf("Hoge::GetBuf.\n");
+    }
+
+    static void Dump(v8::FunctionCallbackInfo<v8::Value> const& info) {
+        v8::Local<v8::Object> self = info.Holder();
+        v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(self->GetInternalField(0));
+        void* p = wrap->Value();
+        static_cast<Hoge*>(p)->dump();
+    }
+
 public:
     int num;
     std::string str;
+    std::vector<uint8_t> buf;
 };
 
 std::string read_file(char const* path) {
@@ -101,10 +135,12 @@ void Print(v8::FunctionCallbackInfo<v8::Value> const& info) {
 v8::Local<v8::Context> create_context(v8::Isolate* isolate) {
     v8::Local<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
-    global->Set(v8::String::NewFromUtf8(isolate, "test", v8::NewStringType::kNormal).ToLocalChecked(),
+    global->Set(
+        v8::String::NewFromUtf8(isolate, "test", v8::NewStringType::kNormal).ToLocalChecked(),
         v8::FunctionTemplate::New(isolate, Test));
 
-    global->Set(v8::String::NewFromUtf8(isolate, "print", v8::NewStringType::kNormal).ToLocalChecked(),
+    global->Set(
+        v8::String::NewFromUtf8(isolate, "print", v8::NewStringType::kNormal).ToLocalChecked(),
         v8::FunctionTemplate::New(isolate, Print));
 
     v8::Local<v8::FunctionTemplate> hoge_template = v8::FunctionTemplate::New(isolate, Hoge::New);
@@ -113,6 +149,11 @@ v8::Local<v8::Context> create_context(v8::Isolate* isolate) {
         Hoge::GetNum, Hoge::SetNum);
     hoge_template->InstanceTemplate()->SetAccessor(v8::String::NewFromUtf8(isolate, "str"),
         Hoge::GetStr, Hoge::SetStr);
+    hoge_template->InstanceTemplate()->SetAccessor(v8::String::NewFromUtf8(isolate, "buf"),
+        Hoge::GetBuf);
+    hoge_template->InstanceTemplate()->Set(
+        v8::String::NewFromUtf8(isolate, "dump", v8::NewStringType::kNormal).ToLocalChecked(),
+        v8::FunctionTemplate::New(isolate, Hoge::Dump));
     global->Set(v8::String::NewFromUtf8(isolate, "Hoge", v8::NewStringType::kNormal).ToLocalChecked(),
         hoge_template);
 

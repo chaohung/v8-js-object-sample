@@ -12,9 +12,17 @@ print(h);
 h.num = 11;
 print(h.num);
 h.str = "hoge";
-print(h.str);
-
+var buf = h.buf;
+for (var i = 0; i < buf.length; i++) {
+  buf[i] = i;
+}
+print(h.buf);
+h.dump();
 h = null;
+
+var h2 = new Hoge();
+h2.dump();
+h2 = null;
 
 var arr = new Array();
 var count = 0;
