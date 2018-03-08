@@ -6,6 +6,9 @@ print(num);
 print(str);
 print(buf);
 
+var node = "global_object"
+global_access();
+
 var h = new Hoge();
 print(h);
 
