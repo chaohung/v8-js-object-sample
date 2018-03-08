@@ -9,6 +9,8 @@ print(buf);
 var node = "global_object"
 global_access();
 
+print(native_object);
+
 var h = new Hoge();
 print(h);
 

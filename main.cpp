@@ -155,6 +155,10 @@ v8::Local<v8::Context> create_context(v8::Isolate* isolate) {
             isolate, "global_access", v8::NewStringType::kNormal).ToLocalChecked(),
         v8::FunctionTemplate::New(isolate, GlobalAccess));
 
+    global->Set(
+        v8::String::NewFromUtf8(isolate, "native_object", v8::NewStringType::kNormal).ToLocalChecked(),
+        v8::Integer::New(isolate, 12345));
+
     v8::Local<v8::FunctionTemplate> hoge_template = v8::FunctionTemplate::New(isolate, Hoge::New);
     hoge_template->InstanceTemplate()->SetInternalFieldCount(1);
     hoge_template->InstanceTemplate()->SetAccessor(v8::String::NewFromUtf8(isolate, "num"),
