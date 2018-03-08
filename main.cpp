@@ -200,6 +200,12 @@ int main(int argc, char* argv[]) {
                     v8::NewStringType::kNormal)
             .ToLocalChecked();
 
+        v8::Local<v8::Integer> num = v8::Integer::New(isolate, 123456789);
+        printf("[native] num test: %d\n", num->Uint32Value());
+        v8::Local<v8::String> str = v8::String::NewFromUtf8(isolate, "hogehoge");
+        v8::String::Utf8Value utf8_str(str);
+        printf("[native] str test: %s\n", *utf8_str);
+
         v8::Local<v8::Script> script =
             v8::Script::Compile(context, source).ToLocalChecked();
         v8::Local<v8::Value> result = script->Run(context).ToLocalChecked();
