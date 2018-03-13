@@ -9,6 +9,8 @@ print(buf);
 var node = "global_object"
 global_access();
 
+callback((num) => { print("callback: ", num); });
+
 print(native_object);
 
 var h = new Hoge();

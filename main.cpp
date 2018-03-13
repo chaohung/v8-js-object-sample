@@ -123,6 +123,12 @@ void GlobalAccess(v8::FunctionCallbackInfo<v8::Value> const& info) {
     printf("node: %s\n", *str);
 }
 
+void Callback(v8::FunctionCallbackInfo<v8::Value> const& info) {
+	v8::Local<v8::Function> func = v8::Local<v8::Function>::Cast(info[0]);
+    v8::Local<v8::Value> num = v8::Integer::New(info.GetIsolate(), 98765);
+    func->Call(info.This(), 1, &num);
+}
+
 void Print(v8::FunctionCallbackInfo<v8::Value> const& info) {
     bool first = true;
     for (int i = 0; i < info.Length(); i++) {
@@ -158,6 +164,10 @@ v8::Local<v8::Context> create_context(v8::Isolate* isolate) {
     global->Set(
         v8::String::NewFromUtf8(isolate, "native_object", v8::NewStringType::kNormal).ToLocalChecked(),
         v8::Integer::New(isolate, 12345));
+
+	global->Set(
+		v8::String::NewFromUtf8(isolate, "callback", v8::NewStringType::kNormal).ToLocalChecked(),
+        v8::FunctionTemplate::New(isolate, Callback));
 
     v8::Local<v8::FunctionTemplate> hoge_template = v8::FunctionTemplate::New(isolate, Hoge::New);
     hoge_template->InstanceTemplate()->SetInternalFieldCount(1);
