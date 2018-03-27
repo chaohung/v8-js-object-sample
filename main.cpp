@@ -7,24 +7,42 @@
 
 class Hoge {
 public:
-    Hoge() : num(0), str(), buf() { printf("Hoge constructor.\n"); }
-    ~Hoge() { printf("Hoge destructor.\n"); }
+    Hoge(int num, char const* str, uint8_t* buf_data, size_t buf_size, bool buf_owner) :
+        num_(num), str_(str), buf_data_(buf_data), buf_size_(buf_size), buf_owner_(buf_owner) {
+            printf("Hoge constructor.\n");
+    }
+    ~Hoge() {
+        printf("Hoge destructor.\n");
+        if (buf_owner_) delete[] buf_data_;
+    }
 
     void dump() {
         printf("\033[31m");
         printf("hoge address: %p\n", this);
-        printf("num: %d\n", num);
-        printf("str: %s\n", str.c_str());
+        printf("num: %d\n", num_);
+        printf("str: %s\n", str_.c_str());
         printf("buf: ");
-        for (int i = 0; i < buf.size(); i++) {
-            printf("%d,", buf[i]);
+        for (int i = 0; i < buf_size_; i++) {
+            printf("%d,", buf_data_[i]);
         } printf("\n");
         printf("\033[00m");
     }
 
     static void New(v8::FunctionCallbackInfo<v8::Value> const& info) {
-        Hoge* h = new Hoge();
-        h->buf.resize(5);
+        int num = info[0]->Int32Value();
+        v8::String::Utf8Value utf8_str(info.GetIsolate(), info[1]);
+        char const* str = *utf8_str;
+        v8::Local<v8::Uint8Array> uint8_array_object = v8::Local<v8::Uint8Array>::Cast(info[2]);
+        v8::ArrayBuffer::Contents content;
+        bool buf_owner;
+        if (uint8_array_object->Buffer()->IsExternal()) {
+            content = uint8_array_object->Buffer()->GetContents();
+            buf_owner = false;
+        } else {
+            content = uint8_array_object->Buffer()->Externalize();
+            buf_owner = true;
+        }
+        Hoge* h = new Hoge(num, str, static_cast<uint8_t*>(content.Data()), content.ByteLength(), buf_owner);
         info.This()->SetInternalField(0, v8::External::New(info.GetIsolate(), h));
         info.GetReturnValue().Set(info.This());
 
@@ -42,7 +60,7 @@ public:
         v8::Local<v8::Object> self = info.Holder();
         v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(self->GetInternalField(0));
         void* p = wrap->Value();
-        int value = static_cast<Hoge*>(p)->num;
+        int value = static_cast<Hoge*>(p)->num_;
         info.GetReturnValue().Set(value);
         printf("Hoge::GetNum.\n");
     }
@@ -52,7 +70,7 @@ public:
         v8::Local<v8::Object> self = info.Holder();
         v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(self->GetInternalField(0));
         void* p = wrap->Value();
-        static_cast<Hoge*>(p)->num = value->Int32Value();
+        static_cast<Hoge*>(p)->num_ = value->Int32Value();
         printf("Hoge::SetNum.\n");
     }
 
@@ -60,7 +78,7 @@ public:
         v8::Local<v8::Object> self = info.Holder();
         v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(self->GetInternalField(0));
         void* p = wrap->Value();
-        auto& str = static_cast<Hoge*>(p)->str;
+        auto& str = static_cast<Hoge*>(p)->str_;
         v8::Local<v8::String> value = v8::String::NewFromUtf8(info.GetIsolate(), str.c_str(),
             v8::NewStringType::kNormal, str.length()).ToLocalChecked();
         info.GetReturnValue().Set(value);
@@ -72,7 +90,7 @@ public:
         v8::Local<v8::Object> self = info.Holder();
         v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(self->GetInternalField(0));
         void* p = wrap->Value();
-        static_cast<Hoge*>(p)->str = *v8::String::Utf8Value(info.GetIsolate(), value);
+        static_cast<Hoge*>(p)->str_ = *v8::String::Utf8Value(info.GetIsolate(), value);
         printf("Hoge::SetStr.\n");
     }
 
@@ -82,8 +100,8 @@ public:
         void* p = wrap->Value();
         Hoge* h = static_cast<Hoge*>(p);
         v8::Local<v8::ArrayBuffer> array_buf = v8::ArrayBuffer::New(info.GetIsolate(),
-            h->buf.data(), h->buf.size());
-        v8::Local<v8::Uint8Array> value = v8::Uint8Array::New(array_buf, 0, h->buf.size());
+            h->buf_data_, h->buf_size_);
+        v8::Local<v8::Uint8Array> value = v8::Uint8Array::New(array_buf, 0, h->buf_size_);
         info.GetReturnValue().Set(value);
         printf("Hoge::GetBuf.\n");
     }
@@ -96,9 +114,11 @@ public:
     }
 
 public:
-    int num;
-    std::string str;
-    std::vector<uint8_t> buf;
+    int num_;
+    std::string str_;
+    uint8_t* buf_data_;
+    size_t buf_size_;
+    bool buf_owner_;
 };
 
 std::string read_file(char const* path) {

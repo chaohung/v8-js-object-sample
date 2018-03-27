@@ -13,22 +13,27 @@ callback((num) => { print("callback: ", num); });
 
 print(native_object);
 
-var h = new Hoge();
-print(h);
+var uint8array = new Uint8Array(5);
+uint8array.set([1, 2, 3, 4]);
 
-h.num = 11;
+var h = new Hoge(11, "hoge", uint8array);
+h.dump();
+
+h.num = 22;
 print(h.num);
-h.str = "hoge";
+h.str = "hogehoge";
+print(h.str);
 var buf = h.buf;
 for (var i = 0; i < buf.length; i++) {
-  buf[i] = i;
+  buf[i] = i+5;
 }
 print(h.buf);
 h.dump();
-h = null;
 
-var h2 = new Hoge();
+var h2 = new Hoge(33, "hoge2", h.buf);
 h2.dump();
+
+h = null;
 h2 = null;
 
 var arr = new Array();
